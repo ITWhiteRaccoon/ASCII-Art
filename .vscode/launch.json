@@ -9,7 +9,10 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/loader",
-            "args": ["british_summer.jpg"],
+            "args": [
+                "british_summer.jpg",
+                "10000"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

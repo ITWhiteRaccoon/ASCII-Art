@@ -22,6 +22,83 @@ typedef struct
 // Protótipos
 void load(char *name, Img *pic);
 void toGrayscale(Img *pic);
+void toHTML(int *medias, int tamMedias, int larMedias);
+
+int main(int argc, char **argv)
+{
+    int ALT_BLOCO = 2;
+    int LAR_BLOCO = 1;
+    float FAT_REDUC = 0.0;
+
+    Img pic;
+    if (argc == 1)
+    {
+        printf("loader [img]\n");
+        exit(1);
+    }
+    load(argv[1], &pic);
+
+    int reduc = argc >= 3 ? atoi(argv[2]) : 0;
+    if (reduc >= 50) //Não é possivel reduzir menos de 50% da imagem usando apenas o tamanho dos blocos, pois o minimo seria tamanho real(1x1) e logo depois 50%(2x2)
+    {
+        FAT_REDUC = reduc >= 90 ? 0.9 : reduc / 100.0;
+
+        float proporcao = (float)pic.width / (float)pic.height;
+        if (pic.height > pic.width)
+        {
+            proporcao = (float)pic.height / (float)pic.width;
+        }
+
+        ALT_BLOCO = pic.height / (pic.height - (pic.height * FAT_REDUC));
+        LAR_BLOCO = ALT_BLOCO > 2 ? ALT_BLOCO / proporcao : 1;
+    }
+
+    if (pic.height < ALT_BLOCO || pic.width < LAR_BLOCO)
+    {
+        printf("Imagem muito pequena, tamanho mínimo de %dx%d pixels.", LAR_BLOCO, ALT_BLOCO);
+        exit(1);
+    }
+
+    toGrayscale(&pic);
+
+    // Exemplo: gravando um arquivo de saída com a imagem (não é necessário para o trabalho, apenas
+    // para ver o resultado intermediário, por ex, da conversão para tons de cinza)
+    SOIL_save_image("out.bmp", SOIL_SAVE_TYPE_BMP, pic.width, pic.height, 3, (const unsigned char *)pic.img);
+
+    int qtdH = pic.width / LAR_BLOCO;
+    int qtdV = pic.height / ALT_BLOCO;
+    int *medias = malloc((qtdH * qtdV) * sizeof(int *));
+
+    int indexMedia = 0;
+    for (int i = 0; i <= pic.width * ((qtdV - 1) * ALT_BLOCO); i += pic.width * ALT_BLOCO)
+    {
+        for (int j = 0; j <= qtdH - 1; j++)
+        {
+            int soma = 0;
+            int linhaAuxiliar = 0;
+            int limite = (i + (j * LAR_BLOCO)) + ((LAR_BLOCO * pic.width) + (LAR_BLOCO - 1)); //Linha atual(i) + bloco atual(j)*largura do bloco + 4 linhas + 3 = ultimo numero do bloco
+            for (int k = i + (j * LAR_BLOCO); k <= limite; k++)
+            {
+                soma += pic.img[k].r;
+
+                linhaAuxiliar++;
+                if (linhaAuxiliar >= ALT_BLOCO)
+                {
+                    linhaAuxiliar = 0;
+                    k += pic.width;
+                }
+            }
+            medias[indexMedia] = soma / (ALT_BLOCO * LAR_BLOCO);
+            indexMedia++;
+        }
+    }
+
+    toHTML(medias, qtdH * qtdV, qtdH);
+
+    // Exemplo: gravando um arquivo saida.html
+    free(medias);
+    free(pic.img);
+}
 
 // Carrega uma imagem para a struct Img
 void load(char *name, Img *pic)
@@ -64,7 +141,7 @@ void toHTML(int *medias, int tamMedias, int larMedias)
     fprintf(arq, "pre{");
     fprintf(arq, "    color: white;");
     fprintf(arq, "    font-family: Courier;");
-    fprintf(arq, "    font-size: 10px;}");
+    fprintf(arq, "    font-size: 8px;}");
     fprintf(arq, "</style>\n");
     fprintf(arq, "<pre>\n");
 
@@ -119,65 +196,4 @@ void toHTML(int *medias, int tamMedias, int larMedias)
     fprintf(arq, "</body>\n");
 
     fclose(arq);
-}
-
-int main(int argc, char **argv)
-{
-    int const ALT_BLOCO = 4;
-    int const LAR_BLOCO = 2;
-
-    Img pic;
-    if (argc == 1)
-    {
-        printf("loader [img]\n");
-        exit(1);
-    }
-    load(argv[1], &pic);
-
-    printf(argv[2]); //fator de reducao
-
-    if (pic.height < ALT_BLOCO || pic.width < LAR_BLOCO)
-    {
-        printf("Imagem muito pequena, tamanho mínimo de 4x5 pixels.");
-        exit(1);
-    }
-
-    toGrayscale(&pic);
-
-    // Exemplo: gravando um arquivo de saída com a imagem (não é necessário para o trabalho, apenas
-    // para ver o resultado intermediário, por ex, da conversão para tons de cinza)
-    SOIL_save_image("out.bmp", SOIL_SAVE_TYPE_BMP, pic.width, pic.height, 3, (const unsigned char *)pic.img);
-
-    int qtdH = pic.width / LAR_BLOCO;
-    int qtdV = pic.height / ALT_BLOCO;
-    int *medias = malloc((qtdH * qtdV) * sizeof(int *));
-
-    int indexMedia = 0;
-    for (int i = 0; i <= pic.width * ((qtdV - 1) * ALT_BLOCO); i += pic.width * ALT_BLOCO)
-    {
-        for (int j = 0; j <= qtdH - 1; j++)
-        {
-            int soma = 0;
-            int linhaAuxiliar = 0;
-            int limite = (i + (j * LAR_BLOCO)) + ((LAR_BLOCO * pic.width) + (LAR_BLOCO - 1)); //Linha atual(i) + bloco atual(j)*largura do bloco + 4 linhas + 3 = ultimo numero do bloco
-            for (int k = i + (j * LAR_BLOCO); k <= limite; k++)
-            {
-                soma += pic.img[k].r;
-
-                linhaAuxiliar++;
-                if (linhaAuxiliar >= ALT_BLOCO)
-                {
-                    linhaAuxiliar = 0;
-                    k += pic.width;
-                }
-            }
-            medias[indexMedia] = soma / (ALT_BLOCO * LAR_BLOCO);
-            indexMedia++;
-        }
-    }
-
-    toHTML(medias, qtdH * qtdV, qtdH);
-
-    // Exemplo: gravando um arquivo saida.html
-    free(pic.img);
 }
